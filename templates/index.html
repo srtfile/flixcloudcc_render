@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlixCloud Stream Resolver</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #13161e;
+      --border:   #1e2330;
+      --accent:   #5b6af0;
+      --accent2:  #8b5cf6;
+      --success:  #22c55e;
+      --warn:     #f59e0b;
+      --error:    #ef4444;
+      --text:     #e4e6f0;
+      --muted:    #6b7280;
+      --mono:     'IBM Plex Mono', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    header span {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-family: var(--mono);
+      background: #1a1f2e;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--muted);
+    }
+
+    main {
+      width: 100%;
+      max-width: 860px;
+      padding: 48px 24px 80px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .hero h2 {
+      font-size: 28px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #e4e6f0, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.3;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    button#resolve-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 8px;
+      padding: 11px 22px;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button#resolve-btn:hover { opacity: 0.88; }
+    button#resolve-btn:active { transform: scale(0.98); }
+    button#resolve-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Progress */
+    #progress-section { display: none; margin-bottom: 28px; }
+
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+
+    .progress-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--muted);
+      transition: color 0.3s;
+    }
+
+    .step.active { color: var(--text); }
+    .step.done { color: var(--success); }
+
+    .step-dot {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      transition: all 0.3s;
+    }
+
+    .step.active .step-dot {
+      border-color: var(--accent);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .step.done .step-dot {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(91,106,240,0.4); }
+      50%       { box-shadow: 0 0 0 5px rgba(91,106,240,0); }
+    }
+
+    /* Results */
+    #result-section { display: none; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .result-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .result-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-block-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      font-size: 10px;
+      font-family: var(--mono);
+      background: #1a1f2e;
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      color: var(--muted);
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-family: var(--sans);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--success); color: var(--success); }
+
+    .result-value {
+      padding: 14px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #a5b4fc;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+
+    .result-value.manifest {
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre;
+      color: #86efac;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* Subtitles */
+    .sub-list { padding: 10px 18px 14px; }
+    .sub-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-lang { color: var(--text); }
+    .sub-link { font-family: var(--mono); font-size: 11px; color: var(--accent); text-decoration: none; }
+    .sub-link:hover { text-decoration: underline; }
+
+    /* Error */
+    #error-section {
+      display: none;
+      background: #1a0a0a;
+      border: 1px solid #3b1212;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 20px;
+    }
+
+    #error-section .err-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--error);
+      margin-bottom: 6px;
+    }
+
+    #error-section .err-msg {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #f87171;
+    }
+
+    .compatible-note {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 32px;
+      line-height: 1.7;
+    }
+
+    .compatible-note strong { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .input-row { flex-direction: column; }
+      main { padding: 28px 16px 60px; }
+      .hero h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">▶</div>
+  <h1>FlixCloud Resolver <span>/ Stream Extractor</span></h1>
+  <div class="badge">v1.0</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Decrypt &amp; Extract Stream URLs</h2>
+    <p>Paste a FlixCloud embed URL to resolve the decrypted HLS stream and manifest.<br>Compatible with reanime.to, 1anime.app, and other sites using FlixCloud.</p>
+  </div>
+
+  <div class="input-card">
+    <div class="input-row">
+      <input type="text" id="url-input" placeholder="https://flixcloud.cc/e/olygrhle7ty7?v=2" />
+      <button id="resolve-btn" onclick="resolve()">Resolve</button>
+    </div>
+    <p class="hint">Only FlixCloud embed URLs are supported.</p>
+  </div>
+
+  <!-- Error -->
+  <div id="error-section">
+    <div class="err-title">⚠ Error</div>
+    <div class="err-msg" id="error-msg"></div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-section">
+    <div class="progress-card">
+      <div class="progress-title">Resolving stream</div>
+      <div id="steps-container"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="result-section">
+    <div class="section-label">Results</div>
+
+    <div class="result-block">
+      <div class="result-block-header">
+        <div class="result-block-title">🔗 Decrypted Stream URL <span class="tag">HLS</span></div>
+        <button class="copy-btn" onclick="copy('stream-url', this)">Copy</button>
+      </div>
+      <div class="result-value" id="stream-url"></div>
+    </div>
+
+    <div class="result-block">
+      <div class="result-block-header">
+        <div class="result-block-title">🌐 Referer Header <span class="tag">required</span></div>
+        <button class="copy-btn" onclick="copy('referer-val', this)">Copy</button>
+      </div>
+      <div class="result-value" id="referer-val"></div>
+    </div>
+
+    <div class="result-block">
+      <div class="result-block-header">
+        <div class="result-block-title">📋 Parsed Manifest <span class="tag">M3U8</span></div>
+        <button class="copy-btn" onclick="copy('manifest-val', this)">Copy</button>
+      </div>
+      <div class="result-value manifest" id="manifest-val"></div>
+    </div>
+
+    <div class="result-block" id="subtitles-block" style="display:none">
+      <div class="result-block-header">
+        <div class="result-block-title">💬 Subtitles</div>
+      </div>
+      <div class="sub-list" id="subtitles-list"></div>
+    </div>
+  </div>
+
+  <p class="compatible-note">
+    Compatible with <strong>FlixCloud</strong> embeds used on reanime.to, 1anime.app, and similar sites.<br>
+    Feed the stream URL + Referer to any HLS-compatible player (VLC, mpv, etc).
+  </p>
+</main>
+
+<script>
+  const STEPS = [
+    "Fetching page content",
+    "Resolving stream token",
+    "Fetching encrypted stream",
+    "Decrypting stream",
+    "Parsing manifest"
+  ];
+
+  function buildSteps() {
+    const container = document.getElementById("steps-container");
+    container.innerHTML = "";
+    STEPS.forEach((label, i) => {
+      const div = document.createElement("div");
+      div.className = "step";
+      div.id = `step-${i}`;
+      div.innerHTML = `<div class="step-dot" id="dot-${i}"></div><span>${label}</span>`;
+      container.appendChild(div);
+    });
+  }
+
+  function setStepActive(i) {
+    const el = document.getElementById(`step-${i}`);
+    if (el) { el.className = "step active"; document.getElementById(`dot-${i}`).textContent = ""; }
+  }
+
+  function setStepDone(i) {
+    const el = document.getElementById(`step-${i}`);
+    if (el) { el.className = "step done"; document.getElementById(`dot-${i}`).textContent = "✓"; }
+  }
+
+  async function resolve() {
+    const url = document.getElementById("url-input").value.trim();
+    if (!url) { showError("Please enter a FlixCloud URL."); return; }
+
+    document.getElementById("error-section").style.display = "none";
+    document.getElementById("result-section").style.display = "none";
+    document.getElementById("progress-section").style.display = "block";
+    document.getElementById("resolve-btn").disabled = true;
+
+    buildSteps();
+
+    // Animate steps while waiting (server handles them sequentially)
+    let stepIdx = 0;
+    setStepActive(0);
+    const ticker = setInterval(() => {
+      // Keep showing steps as active while loading
+    }, 400);
+
+    try {
+      const resp = await fetch("/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+
+      clearInterval(ticker);
+
+      const data = await resp.json();
+
+      if (!resp.ok || data.error) {
+        showError(data.error || "Unknown error occurred.");
+        document.getElementById("progress-section").style.display = "none";
+        return;
+      }
+
+      // Mark all steps done
+      STEPS.forEach((_, i) => setStepDone(i));
+
+      setTimeout(() => {
+        document.getElementById("progress-section").style.display = "none";
+        showResults(data);
+      }, 600);
+
+    } catch (e) {
+      clearInterval(ticker);
+      showError("Network error: " + e.message);
+      document.getElementById("progress-section").style.display = "none";
+    } finally {
+      document.getElementById("resolve-btn").disabled = false;
+    }
+  }
+
+  function showResults(data) {
+    document.getElementById("stream-url").textContent = data.stream_url || "—";
+    document.getElementById("referer-val").textContent = data.referer || "—";
+    document.getElementById("manifest-val").textContent = data.manifest || "—";
+
+    const subs = data.subtitles || [];
+    const subBlock = document.getElementById("subtitles-block");
+    if (subs.length > 0) {
+      const list = document.getElementById("subtitles-list");
+      list.innerHTML = subs.map(s =>
+        `<div class="sub-item">
+          <span class="sub-lang">${s.label || s.language || "Unknown"}</span>
+          <a class="sub-link" href="${s.file || s.url || '#'}" target="_blank">↗ Open</a>
+        </div>`
+      ).join("");
+      subBlock.style.display = "block";
+    } else {
+      subBlock.style.display = "none";
+    }
+
+    document.getElementById("result-section").style.display = "block";
+    document.getElementById("result-section").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function showError(msg) {
+    document.getElementById("error-msg").textContent = msg;
+    document.getElementById("error-section").style.display = "block";
+  }
+
+  function copy(id, btn) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 2000);
+    });
+  }
+
+  // Allow Enter key
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("url-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") resolve();
+    });
+  });
+</script>
+</body>
+</html>
